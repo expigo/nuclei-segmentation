@@ -22,3 +22,4 @@ dependencies:
   - pip:
     - lightning  # structured training
     - hydra-core  # configuration management
+    - segmentation-models-pytorch
