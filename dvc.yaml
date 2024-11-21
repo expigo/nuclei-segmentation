@@ -1,0 +1,22 @@
+stages:
+  prepare:
+    cmd: python -m nuclei_segmentation.data.preprocessing
+    deps:
+      - data/raw
+      - src/nuclei_segmentation/data/preprocessing.py
+    outs:
+      - data/processed
+      
+  train_baseline:
+    cmd: python -m nuclei_segmentation.training.train
+    deps:
+      - data/processed
+      - src/nuclei_segmentation/models/unet.py
+    params:
+      - configs/model_config.yaml
+      - configs/train_config.yaml
+    metrics:
+      - metrics/baseline_metrics.json:
+          cache: false
+    outs:
+      - models/baseline.pt
