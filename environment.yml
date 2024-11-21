@@ -1,0 +1,25 @@
+name: nuclei-seg
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision 
+  - pytorch-cuda=11.8
+  - numpy
+  - pandas
+  - scipy
+  - scikit-image
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - wandb
+  - opencv
+  - albumentations
+  - dvc
+  - pip
+  - pip:
+    - lightning  # structured training
+    - hydra-core  # configuration management
