@@ -1,0 +1,15 @@
+device:
+  accelerator: 'mps'
+  precision: '32'
+  strategy: null
+memory:
+  batch_size: 64
+  prefetch_factor: 2
+  pin_memory: true
+optimization:
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  benchmark: false
+workers:
+  num_workers: 8
+  persistent_workers: true

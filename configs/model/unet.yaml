@@ -1,0 +1,11 @@
+name: vanilla_unet
+in_channels: 3
+init_features: 64
+n_classes: 1  # For binary segmentation
+depth: 4
+dropout_rate: 0.2
+learning_rate: 1e-4
+optimizer:
+  name: adam
+  params:
+    weight_decay: 1e-5

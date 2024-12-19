@@ -1,0 +1,16 @@
+defaults:
+  - model: unet
+  - _self_
+
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+  # device: 'cuda'
+  device: 'mps'
+  num_workers: 4
+
+data:
+  # root_dir: ${oc.env:DATA_ROOT}  # Set via environment variable
+  root_dir: "/Users/kryspin/Desktop/polsl/courses/sem2/DLiDS/cell_detection/nuclei_segmentation/data/raw"
+  mask_type: 'binaries'

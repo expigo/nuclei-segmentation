@@ -162,3 +162,23 @@ cython_debug/
 #.idea/
 
 # project
+# DVC
+/data/raw
+/data/processed
+.dvc/cache
+.dvc/tmp
+.dvc/plots
+
+# W&B
+wandb/
+artifacts/
+*.wandb
+
+# Model checkpoints
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+
+**/.DS_Store
+**/*.csv

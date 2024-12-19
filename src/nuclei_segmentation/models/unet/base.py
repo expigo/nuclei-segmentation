@@ -1,92 +1,153 @@
-from typing import Optional, List, Tuple
+# src/nuclei_segmentation/models/unet/base.py
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import pytorch_lightning as pl
-from torchmetrics import Dice, JaccardIndex
+from typing import List, Dict
 
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int) -> None:
+    def __init__(self, in_channels: int, out_channels: int, dropout_rate: float = 0.2):
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_rate),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         return self.conv(x)
 
 class UNet(pl.LightningModule):
     def __init__(
         self,
         in_channels: int = 3,
-        num_classes: int = 1,
-        features: List[int] = [64, 128, 256, 512],
-        learning_rate: float = 1e-3
-    ) -> None:
+        init_features: int = 64,
+        n_classes: int = 1,
+        depth: int = 4,
+        dropout_rate: float = 0.2,
+        learning_rate: float = 1e-4
+    ):
         super().__init__()
         self.save_hyperparameters()
         
-        self.downs = nn.ModuleList()
-        self.ups = nn.ModuleList()
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        # Contracting path
+        self.encoder = nn.ModuleList()
+        current_channels = in_channels
+        features = init_features
+        for _ in range(depth):
+            self.encoder.append(DoubleConv(current_channels, features, dropout_rate))
+            current_channels = features
+            features *= 2
         
-        # Down part
-        in_c = in_channels
-        for feature in features:
-            self.downs.append(DoubleConv(in_c, feature))
-            in_c = feature
-            
-        # Up part
-        for feature in reversed(features):
-            self.ups.append(
-                nn.ConvTranspose2d(feature*2, feature, kernel_size=2, stride=2)
+        # Bottleneck
+        self.bottleneck = DoubleConv(current_channels, features, dropout_rate)
+        
+        # Expanding path
+        self.decoder = nn.ModuleList()
+        self.upconvs = nn.ModuleList()
+        
+        for _ in range(depth):
+            self.upconvs.append(
+                nn.ConvTranspose2d(features, features//2, kernel_size=2, stride=2)
             )
-            self.ups.append(DoubleConv(feature*2, feature))
+            self.decoder.append(
+                DoubleConv(features, features//2, dropout_rate)
+            )
+            features //= 2
             
-        self.bottleneck = DoubleConv(features[-1], features[-1]*2)
-        self.final_conv = nn.Conv2d(features[0], num_classes, kernel_size=1)
+        # Final convolution
+        self.final_conv = nn.Conv2d(features, n_classes, kernel_size=1)
         
-        # Metrics
-        self.dice = Dice(average='micro')
-        self.iou = JaccardIndex(task='binary', num_classes=2)
+        # Define loss function with class weights due to imbalance
+        pos_weight = torch.tensor([1/0.15])  # Based on foreground ratio
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
+        # Store skip connections
         skip_connections = []
         
-        # Encoder
-        for down in self.downs:
-            x = down(x)
+        # Encoder path
+        for encoder_block in self.encoder:
+            x = encoder_block(x)
             skip_connections.append(x)
-            x = self.pool(x)
+            x = F.max_pool2d(x, 2)
             
         x = self.bottleneck(x)
-        skip_connections = skip_connections[::-1]
         
-        # Decoder
-        for idx in range(0, len(self.ups), 2):
-            x = self.ups[idx](x)
-            skip = skip_connections[idx//2]
+        # Decoder path
+        skip_connections = skip_connections[::-1]  # Reverse for easier access
+        
+        for idx, (decoder_block, upconv) in enumerate(zip(self.decoder, self.upconvs)):
+            x = upconv(x)
+            skip = skip_connections[idx]
             
-            x = torch.cat((skip, x), dim=1)
-            x = self.ups[idx+1](x)
+            # Handle cases where input size is not perfectly divisible by 2**depth
+            if x.shape != skip.shape:
+                x = F.interpolate(x, size=skip.shape[2:])
+                
+            x = torch.cat([skip, x], dim=1)
+            x = decoder_block(x)
             
         return self.final_conv(x)
     
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
-    
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
-        x, y = batch
-        y_hat = self(x)
-        loss = torch.nn.functional.binary_cross_entropy_with_logits(y_hat, y)
+    def training_step(self, batch, batch_idx):
+        images, masks = batch['image'], batch['mask']
+        outputs = self(images)
+        
+        # Ensure masks are binary
+        masks = masks.float()
+        
+        loss = self.criterion(outputs, masks)
         
         # Log metrics
-        self.log('train_loss', loss)
-        self.log('train_dice', self.dice(y_hat.sigmoid(), y))
-        self.log('train_iou', self.iou(y_hat.sigmoid(), y))
-        
+        with torch.no_grad():
+            preds = (torch.sigmoid(outputs) > 0.5).float()
+            dice = self._dice_coefficient(preds, masks)
+            self.log('train_loss', loss, prog_bar=True)
+            self.log('train_dice', dice, prog_bar=True)
+            
         return loss
+    
+    def validation_step(self, batch, batch_idx):
+        images, masks = batch['image'], batch['mask']
+        outputs = self(images)
+        
+        masks = masks.float()
+        loss = self.criterion(outputs, masks)
+        
+        preds = (torch.sigmoid(outputs) > 0.5).float()
+        dice = self._dice_coefficient(preds, masks)
+        
+        self.log('val_loss', loss, prog_bar=True)
+        self.log('val_dice', dice, prog_bar=True)
+        
+        return {'val_loss': loss, 'val_dice': dice}
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=0.1,
+            patience=5,
+            verbose=True
+        )
+        
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': scheduler,
+                'monitor': 'val_loss'
+            }
+        }
+    
+    def _dice_coefficient(self, pred, target, smooth=1e-6):
+        intersection = (pred * target).sum(dim=(2,3))
+        union = pred.sum(dim=(2,3)) + target.sum(dim=(2,3))
+        
+        dice = (2. * intersection + smooth) / (union + smooth)
+        return dice.mean()

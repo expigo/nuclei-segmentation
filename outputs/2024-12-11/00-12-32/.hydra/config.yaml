@@ -1,0 +1,15 @@
+model:
+  name: unet
+  encoder: resnet34
+  encoder_weights: imagenet
+  in_channels: 3
+  classes: 1
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+  device: cuda
+  num_workers: 4
+data:
+  root_dir: ${oc.env:DATA_ROOT}
+  mask_type: binaries

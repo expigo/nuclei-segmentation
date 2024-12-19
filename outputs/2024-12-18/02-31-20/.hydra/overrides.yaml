@@ -1,0 +1,5 @@
+- data.dataset_name=PanNuke
+- data.mask_type=binaries
+- model=smp_unet
+- hardware=m3max
+- training.epochs=200

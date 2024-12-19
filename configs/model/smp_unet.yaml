@@ -1,0 +1,26 @@
+# Model identifier
+name: smp_unet
+
+# Required base parameters
+in_channels: 3
+n_classes: 1
+learning_rate: 1e-3
+
+# SMP specific parameters
+encoder_name: "resnet34"
+encoder_weights: "imagenet"
+
+# Optimizer settings
+optimizer:
+  name: adamw
+  params:
+    weight_decay: 1e-5
+
+# Scheduler settings
+scheduler:
+  name: plateau
+  params:
+    mode: min
+    factor: 0.1
+    patience: 5
+    min_lr: 1e-6

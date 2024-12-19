@@ -1,0 +1,6 @@
+- data.dataset_name=MoNuSAC
+- data.mask_type=binaries
+- model=smp_unet
+- hardware=m3max
+- training.epochs=10
+- training.trainer.log_every_n_steps=10

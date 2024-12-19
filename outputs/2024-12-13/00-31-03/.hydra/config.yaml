@@ -1,0 +1,64 @@
+model:
+  name: smp_unet
+  in_channels: 3
+  n_classes: 1
+  encoder_name: resnet34
+  encoder_weights: imagenet
+  learning_rate: 0.001
+  optimizer:
+    name: adamw
+    params:
+      weight_decay: 1.0e-05
+  scheduler:
+    name: plateau
+    params:
+      mode: min
+      factor: 0.1
+      patience: 5
+      min_lr: 1.0e-06
+data:
+  root_dir: ${oc.env:DATA_ROOT,data/raw}
+  dataset_name: MoNuSAC
+  mask_type: binaries
+  image_size:
+  - 256
+  - 256
+training:
+  epochs: 100
+  batch_size: ${hardware.memory.batch_size}
+  accumulate_grad_batches: 1
+  num_workers: ${hardware.workers.num_workers}
+  lr_scheduler:
+    name: plateau
+    monitor: val_loss
+    patience: 5
+    factor: 0.1
+  early_stopping:
+    monitor: val_loss
+    patience: 10
+    mode: min
+  checkpoint:
+    save_top_k: 3
+    monitor: val_loss
+    mode: min
+hardware:
+  device:
+    accelerator: mps
+    precision: '32'
+    strategy: null
+  memory:
+    batch_size: 64
+    prefetch_factor: 2
+    pin_memory: true
+  optimization:
+    gradient_clip_val: 1.0
+    accumulate_grad_batches: 1
+    benchmark: false
+  workers:
+    num_workers: 8
+    persistent_workers: true
+experiment:
+  name: ${model.name}_${data.mask_type}
+  project: nuclei-segmentation
+  tags: []
+machine_type: m3max

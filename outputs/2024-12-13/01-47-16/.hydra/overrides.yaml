@@ -1,0 +1,3 @@
+- machine_type=m3max
+- model=smp_unet
+- data.dataset_name=TNBC

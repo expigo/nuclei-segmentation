@@ -4,19 +4,21 @@ stages:
     deps:
       - data/raw
       - src/nuclei_segmentation/data/preprocessing.py
+    params:
+      - configs/preprocessing.yaml
     outs:
       - data/processed
-      
+  
   train_baseline:
-    cmd: python -m nuclei_segmentation.training.train
+    cmd: python scripts/run_baseline.py
     deps:
       - data/processed
-      - src/nuclei_segmentation/models/unet.py
+      - src/nuclei_segmentation/models/unet/vanilla_unet.py
+      - scripts/run_baseline.py
     params:
-      - configs/model_config.yaml
-      - configs/train_config.yaml
+      - configs/config.yaml
     metrics:
-      - metrics/baseline_metrics.json:
+      - metrics/${model_name}_${mask_type}_metrics.json:
           cache: false
     outs:
-      - models/baseline.pt
+      - models/checkpoints/${model_name}

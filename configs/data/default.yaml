@@ -1,0 +1,11 @@
+# root_dir: ${data_dir:data/raw}  # Can be overridden by environment variable
+# root_dir: data/raw
+root_dir: ${oc.env:DATA_ROOT,data/raw}
+dataset_name: all  # Options: [all, MoNuSAC, NuCLS, PanNuke, TNBC]
+mask_type: binaries  # [binaries, cell_types, contours, multi_instance]
+image_size: [256, 256]
+# augmentations:
+#   enable: true
+#   transforms:
+#     - random_flip
+#     - random_rotate

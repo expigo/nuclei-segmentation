@@ -20,6 +20,8 @@ dependencies:
   - dvc
   - pytest
   - pip
+  - jpeg
+  - libpng
   - pip:
     - lightning  # structured training
     - hydra-core  # configuration management

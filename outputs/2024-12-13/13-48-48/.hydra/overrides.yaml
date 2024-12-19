@@ -1,0 +1,5 @@
+- machine_type=m3max
+- model=smp_unet
+- data.dataset_name=TNBC
+- data.mask_type=binaries
+- training.epochs=5

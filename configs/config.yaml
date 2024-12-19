@@ -1,0 +1,25 @@
+defaults:
+  - model: unet
+  - data: default
+  - training: default
+  - hardware: ${oc.select:machine_type,m3max}  # Default to m3_mac, can override
+  - _self_
+
+# Hydra configuration
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false  # Prevent changing working directory
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+
+# Experiment configuration
+experiment:
+  name: ${model.name}_${data.mask_type}
+  project: nuclei-segmentation
+  tags: []  # Can be overridden from command line
+
+# Machine-specific overrides are handled automatically
+machine_type: m3max  # Can be overridden from command line
