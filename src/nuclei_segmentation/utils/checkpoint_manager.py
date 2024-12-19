@@ -60,6 +60,7 @@ class ModelCheckpointManager:
             metadata={
                 "epoch": epoch,
                 "metrics": metrics,
+                # Configuration info for reproducibility
                 "model_config": self.config.model,
                 "dataset_config": self.config.data,
                 "hardware_config": self.config.hardware

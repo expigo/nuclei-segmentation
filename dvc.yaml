@@ -1,24 +1,25 @@
 stages:
-  prepare:
-    cmd: python -m nuclei_segmentation.data.preprocessing
-    deps:
-      - data/raw
-      - src/nuclei_segmentation/data/preprocessing.py
-    params:
-      - configs/preprocessing.yaml
-    outs:
-      - data/processed
-  
   train_baseline:
     cmd: python scripts/run_baseline.py
     deps:
-      - data/processed
-      - src/nuclei_segmentation/models/unet/vanilla_unet.py
+      - data/raw
+      - src/nuclei_segmentation/models/unet/smp_unet.py
       - scripts/run_baseline.py
     params:
       - configs/config.yaml
+      - configs/model/smp_unet.yaml
+      - configs/hardware/rtx3080ti.yaml
+      - configs/data/default.yaml
+      - configs/training/default.yaml
+      - configs/augmentation.yaml  
     metrics:
-      - metrics/${model_name}_${mask_type}_metrics.json:
+      - metrics/smp_unet_${data.mask_type}_metrics.json:
           cache: false
     outs:
-      - models/checkpoints/${model_name}
+      - models/checkpoints/smp_unet
+
+data:
+  raw:
+    description: "Raw nuclei segmentation datasets (TNBC, MoNuSAC, NuCLS, PanNuke)"
+    remote: gdrive
+    path: data/raw

@@ -1,0 +1,12 @@
+augmentation:
+  enabled: true
+  transforms:
+    - random_flip:
+        probability: 0.5
+    - random_rotate:
+        angle_range: [-45, 45]
+        probability: 0.3
+    - brightness_contrast:
+        brightness_limit: 0.2
+        contrast_limit: 0.2
+        probability: 0.3
